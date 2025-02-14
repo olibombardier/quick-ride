@@ -1,0 +1,1 @@
+--Autopickup on exit
