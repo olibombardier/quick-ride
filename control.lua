@@ -214,10 +214,12 @@ local function place_vehicle(character)
 		name = prototype.place_result.name,
 		quality = vehicle_stack.quality,
 		position = position,
+		source = character,
 		direction = character.direction,
 		force = character.force,
 		item = vehicle_stack,
-		preserve_ghosts_and_corpses = true
+		preserve_ghosts_and_corpses = true,
+		raise_built = true,
 	}
 	if not vehicle then
 		character.player.create_local_flying_text{

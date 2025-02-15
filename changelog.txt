@@ -1,0 +1,6 @@
+---------------------------------------------------------------------------------------------------
+Version: 1.0.1
+Date: 2025.02.14
+  Bugfixes:
+    - Fixed a crash when vehicle were removed between loadings of a save
+    - The vehicle creation will now raise the 'script_raised_built' event
