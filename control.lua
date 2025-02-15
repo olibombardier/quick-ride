@@ -312,7 +312,7 @@ end)
 
 function validate()
 	storage.players = storage.players or {}
-	storage.vehicles = storage.vehicles or {}
+	storage.vehicles = {}
 	storage.ammo_categories =  {}
 	local ammo_categories = storage.ammo_categories
 	storage.fuel_categories = {}
