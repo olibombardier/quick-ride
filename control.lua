@@ -81,27 +81,29 @@ end
 ---@param player_index int
 ---@return LuaItemStack?
 local function select_vehicle(inventory, player_index)
-
 	---@type LuaItemStack?
 	local selection = nil
-	---@type string?
-	local favorite = storage.players[player_index].favorites["vehicles"]
+	local selection_priority = -100
+	---@type table<string, (int|false)?>
+	local favorites = storage.players[player_index].favorites["vehicles"]
 
 	for _, item in pairs(inventory.get_contents()) do
 		local prototype = prototypes.item[item.name]
 		if prototype.place_result then
 			if prototype.place_result.type == "car" then
+				if favorites[item.name] == false then goto continue end
+				local priority = favorites[item.name] or 0
 				if selection then
 					local quality_prototype = prototypes.quality[item.quality]
-					if selection.name == favorite and item.name ~= favorite then goto continue end
-					if selection.name == item.name and selection.quality.level > quality_prototype.level then goto continue end
-					if item.name ~= favorite then goto continue end
+					if selection_priority >= priority and selection.name ~= item.name then goto continue end
+					if selection.name == item.name and selection.quality.level >= quality_prototype.level then goto continue end
 				end
 				selection = inventory.find_item_stack({
 					name = item.name,
 					quality = item.quality,
 					count = item.count
-				}) --[[@as LuaItemStack]]
+				})
+				selection_priority = priority
 			end
 		end
 		::continue::
@@ -110,28 +112,32 @@ local function select_vehicle(inventory, player_index)
 end
 
 ---@param inventory LuaInventory
----@param favorite string?
+---@param favorites table<ItemID, (int|false)?>
 ---@param fuel_categories table<data.FuelCategoryID, true>
 ---@return LuaItemStack?
-local function select_fuel(inventory, favorite, fuel_categories)
+local function select_fuel(inventory, favorites, fuel_categories)
 	---@type LuaItemStack?
 	local selection = nil
+	local selection_priority = -100
 
 	for _, item in pairs(inventory.get_contents()) do
 		local prototype = prototypes.item[item.name]
 		if prototype.fuel_category then
 			if fuel_categories[prototype.fuel_category] then
+				if favorites[item.name] == false then goto continue end
+				local priority = favorites[item.name] or 0
 				if selection then
 					local quality_prototype = prototypes.quality[item.quality]
-					if selection.name == favorite and item.name ~= favorite then goto continue end
-					if selection.name == item.name and selection.quality.level > quality_prototype.level then goto continue end
-					if prototype.fuel_value < selection.prototype.fuel_value then goto continue end
+					if selection_priority > priority and selection.name ~= item.name then goto continue end
+					if selection.name == item.name and selection.quality.level >= quality_prototype.level then goto continue end
+					if selection_priority == priority and prototype.fuel_value < selection.prototype.fuel_value then goto continue end
 				end
 				selection = inventory.find_item_stack({
 					name = item.name,
 					quality = item.quality,
 					count = item.count
-				}) --[[@as LuaItemStack]]
+				})
+				selection_priority = priority
 			end
 		end
 		::continue::
@@ -153,31 +159,36 @@ local function get_ammo_damage(ammo)
 end
 
 ---@param inventory LuaInventory
----@param favorite ItemID?
+---@param favorites table<ItemID, (int|false)?>
 ---@param ammo_categories table<data.AmmoCategoryID, true>
 ---@return LuaItemStack?
-local function select_ammo(inventory, favorite, ammo_categories)
+local function select_ammo(inventory, favorites, ammo_categories)
 	---@type LuaItemStack?
 	local selection = nil
 	local selection_damage = 0
+	local selection_priority = -100
 
 	for _, item in pairs(inventory.get_contents()) do
 		local prototype = prototypes.item[item.name]
 		if prototype.type == "ammo" then
 			if ammo_categories[prototype.ammo_category.name] then
+				if favorites[item.name] == false then goto continue end
 				local damage = get_ammo_damage(prototype)
+				local priority = favorites[item.name] or 0
+
 				if selection then
 					local quality_prototype = prototypes.quality[item.quality]
-					if selection.name == favorite and item.name ~= favorite then goto continue end
-					if selection.name == item.name and selection.quality.level > quality_prototype.level then goto continue end
-					if selection_damage > damage then goto continue end
+					if selection_priority > priority and selection.name ~= item.name then goto continue end
+					if selection.name == item.name and selection.quality.level >= quality_prototype.level then goto continue end
+					if selection_priority == priority and selection_damage > damage then goto continue end
 				end
 				selection = inventory.find_item_stack({
 					name = item.name,
 					quality = item.quality,
 					count = item.count
-				}) --[[@as LuaItemStack]]
+				})
 				selection_damage = damage
+				selection_priority = priority
 			end
 		end
 		::continue::
@@ -239,15 +250,9 @@ local function place_vehicle(character)
 		if burner then
 			local fuel_inventory = burner.inventory
 			if fuel_inventory then
-				---@type ItemID?
-				local favorite = nil
-				for fuel_category in pairs(burner.fuel_categories) do
-					favorite = storage.players[player_index].favorites["fuel-" .. fuel_category]
-					if favorite then break end
-				end
 
 				for i=1, #fuel_inventory do
-					local fuel_stack = select_fuel(inventory, favorite, burner.fuel_categories)
+					local fuel_stack = select_fuel(inventory, storage.players[player_index].favorites.fuel, burner.fuel_categories)
 					if fuel_stack then
 						local inserted = fuel_inventory.insert(fuel_stack)
 						inventory.remove{
@@ -265,18 +270,15 @@ local function place_vehicle(character)
 			local ammo_inventory = vehicle.get_inventory(defines.inventory.car_ammo)
 			if ammo_inventory then
 				for _, gun in pairs(guns) do
-					---@type ItemID?
-					local favorite = nil
+					---@type table<ItemID, true>
 					local categories = {}
 					if gun.attack_parameters and gun.attack_parameters.ammo_categories then
 						for _, ammo_category in pairs(gun.attack_parameters.ammo_categories) do
 							categories[ammo_category] = true
-							favorite = storage.players[player_index].favorites["ammo-" .. ammo_category]
-							if favorite then break end
 						end
 					end
 
-					local ammo_stack = select_ammo(inventory, favorite, categories)
+					local ammo_stack = select_ammo(inventory, storage.players[player_index].favorites.ammo, categories)
 					if ammo_stack then
 						local inserted = ammo_inventory.insert(ammo_stack)
 						inventory.remove{
@@ -351,8 +353,8 @@ function validate()
 
 	for id, category in pairs(fuel_categories) do
 		category.items = {}
-		for item_id in pairs(prototypes.get_item_filtered{{filter="fuel-category", ["fuel-category"] = id}}) do
-			category.items[item_id] = true
+		for item_id, item in pairs(prototypes.get_item_filtered{{filter="fuel-category", ["fuel-category"] = id}}) do
+			category.items[item_id] = item
 		end
 	end
 
@@ -361,7 +363,7 @@ function validate()
 	end
 	for id, item in pairs(prototypes.get_item_filtered{{filter="type", type = "ammo"}}) do
 		if item.ammo_category and ammo_categories[item.ammo_category.name] then
-			ammo_categories[item.ammo_category.name].items[id] = true
+			ammo_categories[item.ammo_category.name].items[id] = item
 		end
 	end
 	
@@ -390,9 +392,21 @@ script.on_event(defines.events.on_gui_click, function (event)
 	if element.name == "qr-close" then
 		gui.toggle_menu(event.player_index)
 	elseif element.tags.action == "qr-selection" then
-		for _, child in pairs(element.parent.children) do
-			child.toggled = child == element
-		end
-		storage.players[event.player_index].favorites[element.tags.list] = element.tags.choice
+		local list = storage.players[event.player_index].favorites[element.tags.list]
+		local old_value = list[element.tags.choice]
+		---@type any
+		local new_value = 1
+		if event.button == defines.mouse_button_type.right then new_value = false end
+		if new_value == old_value then new_value = nil end
+
+		list[element.tags.choice] = new_value
+		gui.update_button_style(event.element, new_value)
+	elseif element.name == "qr-swap-view" then
+		storage.players[event.player_index].row_view = not storage.players[event.player_index].row_view
+		gui.make_gui_content(event.player_index)
+		local sprite_names = gui.get_view_button_names(storage.players[event.player_index].row_view)
+		event.element.sprite = sprite_names.normal
+		event.element.hovered_sprite = sprite_names.dark
+		event.element.clicked_sprite = sprite_names.normal
 	end
 end)

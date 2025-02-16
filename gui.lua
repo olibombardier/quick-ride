@@ -2,6 +2,8 @@ local mod_gui = require("mod-gui")
 
 local gui = {}
 
+gui.column_count = 10
+
 function gui.init()
 	-- Make storage variables
 	-- Create gui for players
@@ -18,7 +20,11 @@ function gui.validate_player(player)
 	--[[@cast player LuaPlayer]]
 	local player_storage = storage.players[player.index]
 
-	player_storage.favorites = player_storage.favorites or {}
+	player_storage.favorites = player_storage.favorites or {
+		vehicles = {},
+		fuel = {},
+		ammo = {},
+	}
 
 	if player_storage.gui then
 		player_storage.gui.main_frame.destroy()
@@ -38,46 +44,66 @@ function gui.toggle_menu(player_index)
 end
 
 ---@param parent LuaGuiElement
----@param item_list table<string, true>
+---@param item_list table<string, LuaPrototypeBase>
 ---@param list_name string
 ---@param player_storage any
 ---@param item_type "entity"|"item"
----@param category string?
----@param subtitles boolean?
-local function make_section(parent, item_list, list_name, player_storage, item_type, category, subtitles)
-	if table_size(item_list) <= 1 then return end
+local function make_section(parent, item_list, list_name, player_storage, item_type)
+	local column_index = 0
 
-	if subtitles then
-		parent.add{
-			type = "label",
-			caption = {category .. "-category-name." .. list_name},
-			style = "qr_subtitle"
-		}
-	end
-	local item_frame = parent.add{
-		type = "frame",
-		direction = "horizontal",
-		style = "qr_item_row",
-	}
+	for id, prototype in pairs(item_list) do
+		local value = player_storage.favorites[list_name][id]
+		local blacklisted = value == false
 
-	local list_tag = list_name
-	if category then list_tag = category .. "-" .. list_name end
-	for id in pairs(item_list) do
-		local selected = false
-		if player_storage.favorites[list_tag] and player_storage.favorites[list_tag] == id then
-			selected = true
-		end
-		item_frame.add{
+		---@type LuaGuiElement.add_param
+		local params = {
 			type = "sprite-button",
 			name = "qr-selection-" .. id,
+			tooltip = prototype.localised_name,
 			sprite = item_type .. "." .. id,
-			toggled = selected,
+			toggled = value == 1,
 			tags = {
 				action = "qr-selection",
-				list = list_tag,
+				list = list_name,
 				choice = id,
 			}
 		}
+
+		local button = parent.add(params)
+		if blacklisted then
+			
+			button.add{
+				type = "empty-widget",
+				style = "qr_blacklist_overlay",
+				name = "x_icon"
+			}
+		end
+		column_index = column_index +1
+	end
+
+	while column_index % gui.column_count ~= 0 do
+		parent.add{type = "empty-widget"}
+		column_index = column_index + 1
+	end
+end
+
+---@param button LuaGuiElement
+function gui.update_button_style(button, value)
+	if value == 1 then
+		button.toggled = true
+		if button.x_icon then button.x_icon.destroy() end
+	elseif value == false then
+		button.toggled = false
+		if not button.x_icon then
+			button.add{
+				type = "empty-widget",
+				style = "qr_blacklist_overlay",
+				name = "x_icon"
+			}
+		end
+	else
+		button.toggled = false
+		if button.x_icon then button.x_icon.destroy() end
 	end
 end
 
@@ -91,6 +117,141 @@ local function make_subheader(parent, content)
 	}
 end
 
+---@param parent LuaGuiElement
+---@return LuaGuiElement
+local function make_section_frame(parent)
+	local pane = parent.add{
+		type = "scroll-pane",
+		direction = "vertical",
+		style = "qr_item_pane"
+	}
+
+	return pane.add{
+		type = "table",
+		column_count = gui.column_count,
+		style = "filter_slot_table"
+	}
+end
+
+function gui.get_view_button_names(row_view)
+	local base_name = "qr-row-view"
+	if row_view then base_name = "qr-list-view" end
+	return {
+		normal = base_name,
+		dark = base_name .. "-black"
+	}
+end
+
+---comment
+---@param main_frame LuaGuiElement
+---@param player_storage any
+function gui.make_gui_content(player_index)
+	local player_storage = storage.players[player_index]
+
+	---@type LuaGuiElement
+	local main_frame = player_storage.gui.main_frame
+	---@type LuaGuiElement
+	local main_flow = main_frame.main_flow
+	local top = main_frame.location.y
+
+	if main_flow.content then main_flow.content.destroy() end
+
+	---@type LuaGuiElement
+	local content_frame
+	local info_frame
+	if player_storage.row_view then
+		content_frame = main_flow.add{
+			type = "flow",
+			name = "content",
+			direction = "vertical"
+		}
+		info_frame = content_frame.add{
+			type = "frame",
+			style = "qr_shallow_frame",
+			direction = "vertical"
+		}
+	else
+		content_frame = main_flow.add{
+			type = "frame",
+			name = "content",
+			style = "qr_shallow_frame",
+			direction = "vertical"
+		}
+		info_frame = content_frame
+	end
+	
+	info_frame.add{
+		type = "label",
+		caption = "Right-click to set as a favorite item."
+	}
+	info_frame.add{
+		type = "label",
+		caption = "Left-click to blacklist an item."
+	}
+	
+	---@type LuaGuiElement
+	local row = nil
+	if player_storage.row_view then
+		row = content_frame.add{
+			type = "flow",
+			direction = "horizontal"
+		}
+		content_frame = row.add{
+			type = "frame",
+			style = "qr_shallow_frame",
+			direction = "vertical"
+		}
+	end
+
+	make_subheader(content_frame, "Vehicle")
+	local vehicle_frame = make_section_frame(content_frame)
+	make_section(vehicle_frame, storage.vehicles, "vehicles", player_storage, "entity")
+
+
+	if player_storage.row_view then
+		content_frame = row.add{
+			type = "frame",
+			style = "qr_shallow_frame",
+			direction = "vertical"
+		}
+	else
+	content_frame.add{
+		type = "line",
+		direction = "horizontal",
+		style = "qr_separator",
+	}
+	end
+
+	make_subheader(content_frame, "Fuel")
+	local fuel_frame = make_section_frame(content_frame)
+	for _, category in pairs(storage.fuel_categories) do
+		make_section(fuel_frame, category.items, "fuel", player_storage, "item")
+	end
+
+
+	if player_storage.row_view then
+		content_frame = row.add{
+			type = "frame",
+			style = "qr_shallow_frame",
+			direction = "vertical"
+		}
+	else
+		content_frame.add{
+			type = "line",
+			direction = "horizontal",
+			style = "qr_separator",
+		}
+	end
+
+	make_subheader(content_frame, "Ammo")
+	local ammo_frame = make_section_frame(content_frame)
+	for _, category in pairs(storage.ammo_categories) do
+		make_section(ammo_frame, category.items, "ammo", player_storage, "item")
+	end
+
+	main_frame.location.top = top
+end
+
 function gui.make_gui(player)
 	local player_storage = storage.players[player.index]
 	local main_frame = player.gui.screen.add{
@@ -101,6 +262,7 @@ function gui.make_gui(player)
 	
 	local v_flow = main_frame.add{
 		type = "flow",
+		name = "main_flow",
 		direction = "vertical"
 	}
 
@@ -121,10 +283,20 @@ function gui.make_gui(player)
 	}
 
 	---@type LuaGuiElement
-	local drag_handle = header.add{
+	header.add{
 		type="empty-widget",
 		style="titlebar_drag_handle",
 		ignored_by_interaction = true
+	}
+
+	local sprite_names = gui.get_view_button_names(player_storage.row_view)
+	header.add{
+		type = "sprite-button",
+		name = "qr-swap-view",
+		sprite = sprite_names.normal,
+		hovered_sprite = sprite_names.dark,
+		clicked_sprite = sprite_names.normal,
+		style = "frame_action_button",
 	}
 
 	header.add{
@@ -136,41 +308,12 @@ function gui.make_gui(player)
 		style = "frame_action_button",
 	}
 
-	---@type LuaGuiElement
-	local content_frame = v_flow.add{
-		type = "frame",
-		style = "inside_shallow_frame",
-		direction = "vertical"
-	}
-	
-	make_subheader(content_frame, "Vehicle")
-	make_section(content_frame, storage.vehicles, "vehicles", player_storage, "entity")
-
-	content_frame.add{
-		type = "line",
-		direction = "horizontal",
-		style = "qr_separator",
-	}
-
-	make_subheader(content_frame, "Fuel")
-	for fuel_category, category in pairs(storage.fuel_categories) do
-		make_section(content_frame, category.items, fuel_category, player_storage, "item", "fuel", table_size(storage.fuel_categories) > 1)
-	end
-
-	content_frame.add{
-		type = "line",
-		direction = "horizontal",
-		style = "qr_separator",
-	}
-
-	make_subheader(content_frame, "Ammo")
-	for ammo_category, category in pairs(storage.ammo_categories) do
-		make_section(content_frame, category.items, ammo_category, player_storage, "item", "ammo", table_size(storage.ammo_categories) > 1)
-	end
-
 	player_storage.gui = {
-	main_frame = main_frame
+		main_frame = main_frame
 	}
+
+	gui.make_gui_content(player.index)
 end
+
 
 return gui
