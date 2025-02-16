@@ -27,6 +27,24 @@ local function no_space(character, vehicle_name)
 	}
 end
 
+---Copy a grid into a other as long as they have the same size
+---@param source LuaEquipmentGrid
+---@param target LuaEquipmentGrid
+local function copy_grid(source, target)
+	for x=0, source.width do
+		for y=0, source.height do
+			local equipment = source.get({x, y})
+			if equipment and equipment.position.x == x and equipment.position.y == y then
+				target.put{
+					name = equipment.name,
+					quality = equipment.quality,
+					position = {x, y},
+				}
+			end
+		end
+	end
+end
+
 ---@param character LuaEntity
 local function pickup_vehicle(character)
 	--TODO Save vehicle prototype, fuel and ammo
@@ -61,11 +79,20 @@ local function pickup_vehicle(character)
 	local vehicle_items = vehicle.prototype.items_to_place_this
 	if vehicle_items and character_inventory.can_insert(vehicle_items[1]) then
 		local item = vehicle_items[1]
+		local empty_stack = character_inventory.find_empty_stack({name=item.name, quality=item.quality})
+		if not empty_stack then
+			no_room(character)
+			return
+		end
 		character_inventory.insert({
 			name = item.name,
 			quality = item.quality,
-			health = vehicle.health / vehicle.max_health,
+			health = vehicle.health / vehicle.max_health
 		})
+		if empty_stack.valid_for_read and vehicle.grid then
+			local grid = empty_stack.create_grid()
+			copy_grid(vehicle.grid, grid)
+		end
 		local position = vehicle.position
 		vehicle.destroy()
 		character.teleport(position)
@@ -238,6 +265,12 @@ local function place_vehicle(character)
 			text = "vehicle creation failed"
 	}
 	else
+		--Copy equipment
+
+		if vehicle_stack.item and vehicle_stack.item.grid and vehicle.grid then
+			copy_grid(vehicle_stack.item.grid, vehicle.grid)
+		end
+
 		vehicle.health = vehicle_stack.health * vehicle.max_health
 		inventory.remove({
 			name = vehicle_stack.name,

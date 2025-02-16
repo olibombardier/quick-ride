@@ -1,4 +1,13 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.1.0
+Date: 2025.02.14
+  Changes:
+    - Reworked the GUI to be simpler
+    - Added an alternative GUI for mod that have a lot
+    - It's now possible to have multiple favorites and to blacklist vehicles, fuel or ammo
+  Bugfixes:
+    - Equipment from vehicles' equipment grid is no longer lost when using the shortcut.
+---------------------------------------------------------------------------------------------------
 Version: 1.0.1
 Date: 2025.02.14
   Bugfixes:
