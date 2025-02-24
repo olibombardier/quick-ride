@@ -252,6 +252,8 @@ function gui.make_gui_content(player_index)
 	main_frame.location.top = top
 end
 
+---Create the gui for a player
+---@param player LuaPlayer
 function gui.make_gui(player)
 	local player_storage = storage.players[player.index]
 	local main_frame = player.gui.screen.add{
@@ -311,6 +313,7 @@ function gui.make_gui(player)
 	player_storage.gui = {
 		main_frame = main_frame
 	}
+	player.opened = main_frame
 
 	gui.make_gui_content(player.index)
 end

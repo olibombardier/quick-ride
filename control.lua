@@ -443,3 +443,12 @@ script.on_event(defines.events.on_gui_click, function (event)
 		event.element.clicked_sprite = sprite_names.normal
 	end
 end)
+
+script.on_event(defines.events.on_gui_closed, function (event)
+	if event.element and event.element.name == "quick-ride-main" then
+		local player_storage = storage.players[event.player_index]
+		if player_storage and player_storage.gui then
+			gui.toggle_menu(event.player_index)
+		end
+	end
+end)
