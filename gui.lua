@@ -188,6 +188,10 @@ function gui.make_gui_content(player_index)
 		type = "label",
 		caption = "Left-click to blacklist an item."
 	}
+	info_frame.add{
+		type = "label",
+		caption = "Tip: Double tapping the Quick ride shortcut will swap to the next vehicle."
+	}
 	
 	---@type LuaGuiElement
 	local row = nil

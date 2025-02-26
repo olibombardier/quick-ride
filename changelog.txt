@@ -3,6 +3,7 @@ Version: 1.1.2
 Date: 2025-02-26
   Changes:
     - Added spidertrons to vehicules found by Quick Ride
+    - Players can now double tap the shortcut to swap to a second vehicle
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.1
 Date: 2025.02.24

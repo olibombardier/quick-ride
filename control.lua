@@ -233,6 +233,8 @@ local function place_vehicle(character)
 	local vehicle_stack = select_vehicle(inventory, character.player.index)
 	if not vehicle_stack then return end
 	
+	if character.driving then pickup_vehicle(character) end --For quick swap
+
 	local prototype = vehicle_stack.item.prototype
 	local position = character.position
 
@@ -265,78 +267,87 @@ local function place_vehicle(character)
 		character.player.create_local_flying_text{
 			position = character.position,
 			text = "vehicle creation failed"
-	}
-	else
-		--Copy equipment
+		}
+		return
+end
+	--Copy equipment
 
-		if vehicle_stack.item and vehicle_stack.item.grid and vehicle.grid then
-			copy_grid(vehicle_stack.item.grid, vehicle.grid)
-		end
+	if vehicle_stack.item and vehicle_stack.item.grid and vehicle.grid then
+		copy_grid(vehicle_stack.item.grid, vehicle.grid)
+	end
 
-		vehicle.health = vehicle_stack.health * vehicle.max_health
-		inventory.remove({
-			name = vehicle_stack.name,
-			quality = vehicle_stack.quality,
-			count = 1
-		})
-		vehicle.set_driver(character)
+	vehicle.health = vehicle_stack.health * vehicle.max_health
+	inventory.remove({
+		name = vehicle_stack.name,
+		quality = vehicle_stack.quality,
+		count = 1
+	})
+	vehicle.set_driver(character)
+	storage.players[player_index].entered_tick = game.tick
 
-		local burner = vehicle.burner
-		if burner then
-			local fuel_inventory = burner.inventory
-			if fuel_inventory then
+	if math.random() < 0.005 then
+		character.player.create_local_flying_text{
+			position = character.position,
+			text = "CATCH A RIIIIIIIIIIIIDE!",
+			time_to_live = 120
+		}
+	end
 
-				for i=1, #fuel_inventory do
-					local fuel_stack = select_fuel(inventory, storage.players[player_index].favorites.fuel, burner.fuel_categories)
-					if fuel_stack then
-						local inserted = fuel_inventory.insert(fuel_stack)
-						inventory.remove{
-							name= fuel_stack.name,
-							quality = fuel_stack.quality,
-							count = inserted
-						}
-					end
+	local burner = vehicle.burner
+	if burner then
+		local fuel_inventory = burner.inventory
+		if fuel_inventory then
+
+			for i=1, #fuel_inventory do
+				local fuel_stack = select_fuel(inventory, storage.players[player_index].favorites.fuel, burner.fuel_categories)
+				if fuel_stack then
+					local inserted = fuel_inventory.insert(fuel_stack)
+					inventory.remove{
+						name= fuel_stack.name,
+						quality = fuel_stack.quality,
+						count = inserted
+					}
 				end
 			end
 		end
+	end
 
-		local guns = vehicle.prototype.guns
-		if guns then
-			local ammo_inventory = vehicle.get_inventory(defines.inventory.car_ammo)
-			if ammo_inventory then
-				for _, gun in pairs(guns) do
-					---@type table<ItemID, true>
-					local categories = {}
-					if gun.attack_parameters and gun.attack_parameters.ammo_categories then
-						for _, ammo_category in pairs(gun.attack_parameters.ammo_categories) do
-							categories[ammo_category] = true
-						end
+	local guns = vehicle.prototype.guns
+	if guns then
+		local ammo_inventory = vehicle.get_inventory(defines.inventory.car_ammo)
+		if ammo_inventory then
+			for _, gun in pairs(guns) do
+				---@type table<ItemID, true>
+				local categories = {}
+				if gun.attack_parameters and gun.attack_parameters.ammo_categories then
+					for _, ammo_category in pairs(gun.attack_parameters.ammo_categories) do
+						categories[ammo_category] = true
 					end
+				end
 
-					local ammo_stack = select_ammo(inventory, storage.players[player_index].favorites.ammo, categories)
-					if ammo_stack then
-						local inserted = ammo_inventory.insert(ammo_stack)
-						inventory.remove{
-							name= ammo_stack.name,
-							quality = ammo_stack.quality,
-							count = inserted
-						}
-					end
+				local ammo_stack = select_ammo(inventory, storage.players[player_index].favorites.ammo, categories)
+				if ammo_stack then
+					local inserted = ammo_inventory.insert(ammo_stack)
+					inventory.remove{
+						name= ammo_stack.name,
+						quality = ammo_stack.quality,
+						count = inserted
+					}
 				end
 			end
 		end
 	end
 end
 
-
 script.on_event("quick-ride", function(event)
 	local player = game.players[event.player_index]
 	if not player.character then return end
+	local player_storage = storage.players[event.player_index]
 	
-	if player.character.driving then
-		pickup_vehicle(player.character)
-	else
+	if not player.character.driving or event.tick - player_storage.entered_tick < player_storage.double_tap_delay then
 		place_vehicle(player.character)
+	else
+		pickup_vehicle(player.character)
 	end
 end)
 
@@ -403,15 +414,21 @@ function validate()
 		end
 	end
 	
-	for player_index in pairs(game.players) do
+	for player_index, player in pairs(game.players) do
 		storage.players[player_index] = storage.players[player_index] or {}
+		storage.players[player_index].entered_tick = storage.players[player_index].entered_tick or 0
+		storage.players[player_index].double_tap_delay = player.mod_settings["qr-double-tap-delay"].value * 60
 	end
 
 	gui.init()
 end
 
 script.on_event(defines.events.on_player_joined_game, function (event)
-	storage.players[event.player_index] = {}
+	local player = game.get_player(event.player_index)
+	storage.players[event.player_index] = {
+		entered_tick = 0,
+		double_tap_delay = player and player.mod_settings["qr-double-tap-delay"].value * 60
+	}
 	gui.validate_player(event.player_index)
 end)
 
@@ -421,6 +438,13 @@ end)
 
 script.on_configuration_changed(function ()
 	validate()
+end)
+
+script.on_event(defines.events.on_runtime_mod_setting_changed, function (event)
+	local player = game.get_player(event.player_index)
+	if not player then return end
+	local player_storage = storage.players[event.player_index]
+	player_storage.double_tap_delay = player.mod_settings["qr-double-tap-delay"].value * 60
 end)
 
 script.on_event(defines.events.on_gui_click, function (event)
