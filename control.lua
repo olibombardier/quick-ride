@@ -1,5 +1,7 @@
 local gui = require("gui")
 local damage_lib = require("damage")
+---@type EntityPrototypeFilter[]
+local vehicle_filters = {{filter="type", type="car"}, {mode="or", filter="type", type="spider-vehicle"}}
 
 local vehicle_inventories = {
 	defines.inventory.car_trunk,
@@ -117,7 +119,7 @@ local function select_vehicle(inventory, player_index)
 	for _, item in pairs(inventory.get_contents()) do
 		local prototype = prototypes.item[item.name]
 		if prototype.place_result then
-			if prototype.place_result.type == "car" then
+			if prototype.place_result.type == "car" or prototype.place_result.type == "spider-vehicle" then
 				if favorites[item.name] == false then goto continue end
 				local priority = favorites[item.name] or 0
 				if selection then
@@ -326,6 +328,7 @@ local function place_vehicle(character)
 	end
 end
 
+
 script.on_event("quick-ride", function(event)
 	local player = game.players[event.player_index]
 	if not player.character then return end
@@ -355,7 +358,7 @@ function validate()
 	storage.fuel_categories = {}
 	local fuel_categories = storage.fuel_categories
 
-	for id, vehicle in pairs(prototypes.get_entity_filtered{{filter="type", type="car"}}) do
+	for id, vehicle in pairs(prototypes.get_entity_filtered(vehicle_filters)) do
 		storage.vehicles[id] = vehicle
 
 		--ammo categories
