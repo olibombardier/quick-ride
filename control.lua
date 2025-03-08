@@ -37,11 +37,24 @@ local function copy_grid(source, target)
 		for y=0, source.height do
 			local equipment = source.get({x, y})
 			if equipment and equipment.position.x == x and equipment.position.y == y then
-				target.put{
-					name = equipment.name,
-					quality = equipment.quality,
-					position = {x, y},
-				}
+				if equipment.name ~= "equipment-ghost" then
+					local new_equip = target.put{
+						name = equipment.name,
+						quality = equipment.quality,
+						position = {x, y},
+					}
+					new_equip.energy = equipment.energy
+					if new_equip.max_shield > 0 then
+						new_equip.shield = equipment.shield
+					end
+				else
+					target.put{
+						name = equipment.ghost_name,
+						quality = equipment.quality,
+						position = {x, y},
+						ghost = true,
+					}
+				end
 			end
 		end
 	end
