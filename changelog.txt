@@ -6,7 +6,7 @@ Date: 2025-03-08
     - Fixed equipment shield and energy level not being preserved
     - Fixed a mod crash when placing a vehicle with ghost equipment
   Changes:
-    - Improved code for getting out of vehicles
+    - Let the API handle picking up vehicles
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.2
 Date: 2025-02-26
