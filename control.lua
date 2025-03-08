@@ -55,55 +55,10 @@ local function pickup_vehicle(character)
 	local vehicle = character.vehicle
 	if not vehicle then return end
 	
-	for _, inventory_type in pairs(vehicle_inventories) do
-		local inventory = vehicle.get_inventory(inventory_type)
-		if not inventory then goto next_inventory end
-		for _, content in pairs(inventory.get_contents()) do
-			if character_inventory.can_insert(content) then
-				local initial_count = content.count
-				local inserted = character_inventory.insert(content)
-				inventory.remove{
-					name = content.name,
-					quality = content.quality,
-					count = inserted,
-				}
-				if initial_count ~= inserted then
-					no_room(character)
-					return
-				end
-			else
-				no_room(character)
-				return
-			end
-		end
-		::next_inventory::
-	end
-	local vehicle_items = vehicle.prototype.items_to_place_this
-	if vehicle_items and character_inventory.can_insert(vehicle_items[1]) then
-		local item = vehicle_items[1]
-		local empty_stack = character_inventory.find_empty_stack({name=item.name, quality=item.quality})
-		if not empty_stack then
-			no_room(character)
-			return
-		end
-		character_inventory.insert({
-			name = item.name,
-			quality = item.quality,
-			health = vehicle.health / vehicle.max_health
-		})
-		if empty_stack.valid_for_read and vehicle.grid then
-			local grid = empty_stack.create_grid()
-			copy_grid(vehicle.grid, grid)
-		end
-		local position = vehicle.position
-		vehicle.destroy()
-		character.teleport(position)
-		character.player.play_sound{
-			path="utility/deconstruct_medium"
-		}
-	else
-		no_room(character)
-	end
+	local position = vehicle.position
+	vehicle.set_driver(nil)
+	local succeded = vehicle.mine{inventory = character_inventory, raise_destroyed = true}
+	if succeded then character.teleport(position) end
 end
 
 ---@param inventory LuaInventory

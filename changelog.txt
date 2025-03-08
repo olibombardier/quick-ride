@@ -1,4 +1,11 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.1.3
+Date: ????
+  Bugfixes:
+    - Logistic requests of vehicles will be preserved when vehicle are put back in the player's inventory
+  Changes:
+    - Improved code for getting out of vehicles
+---------------------------------------------------------------------------------------------------
 Version: 1.1.2
 Date: 2025-02-26
   Changes:
