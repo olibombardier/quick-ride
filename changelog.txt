@@ -1,7 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.4
-Date: ????
-  Changes:
+Date: 2025-03-17
+  Bugfixes:
+    - Fixed an error when placing a vehicle if another mod added equipment before Quick-Ride could add the equipment from the inventory.
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.3
 Date: 2025-03-08

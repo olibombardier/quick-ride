@@ -33,29 +33,28 @@ end
 ---@param source LuaEquipmentGrid
 ---@param target LuaEquipmentGrid
 local function copy_grid(source, target)
-	for x=0, source.width do
-		for y=0, source.height do
-			local equipment = source.get({x, y})
-			if equipment and equipment.position.x == x and equipment.position.y == y then
-				if equipment.name ~= "equipment-ghost" then
-					local new_equip = target.put{
-						name = equipment.name,
-						quality = equipment.quality,
-						position = {x, y},
-					}
-					new_equip.energy = equipment.energy
-					if new_equip.max_shield > 0 then
-						new_equip.shield = equipment.shield
-					end
-				else
-					target.put{
-						name = equipment.ghost_name,
-						quality = equipment.quality,
-						position = {x, y},
-						ghost = true,
-					}
+	for _, equipment in pairs(source.equipment) do
+		--if target.get(equipment.position)
+
+		if equipment.name ~= "equipment-ghost" then
+			local new_equip = target.put{
+				name = equipment.name,
+				quality = equipment.quality,
+				position = equipment.position,
+			}
+			if new_equip ~= nil then
+				new_equip.energy = equipment.energy
+				if new_equip.max_shield > 0 then
+					new_equip.shield = equipment.shield
 				end
 			end
+		else
+			target.put{
+				name = equipment.ghost_name,
+				quality = equipment.quality,
+				position = {x, y},
+				ghost = true,
+			}
 		end
 	end
 end
