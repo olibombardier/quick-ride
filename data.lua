@@ -113,3 +113,9 @@ styles.qr_blacklist_overlay =
   size = {slot_size - 10, slot_size - 10},
   margin = 10,
 }
+
+styles.qr_checkbox =
+{
+  type = "checkbox_style",
+  left_margin = 4,
+}

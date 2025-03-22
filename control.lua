@@ -1,7 +1,30 @@
+require("util")
+
 local gui = require("gui")
 local damage_lib = require("damage")
+
 ---@type EntityPrototypeFilter[]
 local vehicle_filters = {{filter="type", type="car"}, {mode="or", filter="type", type="spider-vehicle"}}
+---@type EntityPrototypeFilter[]
+local locomotive_included_filters = table.deepcopy(vehicle_filters)
+table.insert(locomotive_included_filters, {mode="or", filter="type", type="locomotive"})
+
+local rail_detect_range = 3.5
+
+local rail_types = {
+	"curved-rail-a",
+	"elevated-curved-rail-a",
+	"curved-rail-b",
+	"elevated-curved-rail-b",
+	"curved-rail-b",
+	"half-diagonal-rail",
+	"elevated-half-diagonal-rail",
+	"legacy-curved-rail",
+	"legacy-straight-rail",
+	"rail-ramp",
+	"straight-rail",
+	"elevated-straight-rail"
+}
 
 local vehicle_inventories = {
 	defines.inventory.car_trunk,
@@ -29,13 +52,22 @@ local function no_space(character, vehicle_name)
 	}
 end
 
+---Get the closest rail
+---@param character LuaEntity
+---@return LuaEntity[]
+local function get_close_rail(character)
+	return character.surface.find_entities_filtered{
+		position = character.position,
+		radius = rail_detect_range,
+		type = rail_types
+	}
+end
+
 ---Copy a grid into a other as long as they have the same size
 ---@param source LuaEquipmentGrid
 ---@param target LuaEquipmentGrid
 local function copy_grid(source, target)
 	for _, equipment in pairs(source.equipment) do
-		--if target.get(equipment.position)
-
 		if equipment.name ~= "equipment-ghost" then
 			local new_equip = target.put{
 				name = equipment.name,
@@ -75,18 +107,21 @@ end
 
 ---@param inventory LuaInventory
 ---@param player_index int
+---@param on_rails boolean
 ---@return LuaItemStack?
-local function select_vehicle(inventory, player_index)
+local function select_vehicle(inventory, player_index, on_rails)
 	---@type LuaItemStack?
 	local selection = nil
 	local selection_priority = -100
+	local locomotive_found = false
 	---@type table<string, (int|false)?>
 	local favorites = storage.players[player_index].favorites["vehicles"]
 
 	for _, item in pairs(inventory.get_contents()) do
 		local prototype = prototypes.item[item.name]
 		if prototype.place_result then
-			if prototype.place_result.type == "car" or prototype.place_result.type == "spider-vehicle" then
+			local type = prototype.place_result.type
+			if ((type == "car" or type == "spider-vehicle") and not locomotive_found) or (type == "locomotive" and on_rails) then
 				if favorites[item.name] == false then goto continue end
 				local priority = favorites[item.name] or 0
 				if selection then
@@ -100,6 +135,7 @@ local function select_vehicle(inventory, player_index)
 					count = item.count
 				})
 				selection_priority = priority
+				if type == "locomotive" then locomotive_found = true end
 			end
 		end
 		::continue::
@@ -197,7 +233,12 @@ local function place_vehicle(character)
 	local player_index = character.player.index
 	local inventory = character.get_inventory(defines.inventory.character_main)
 	if not inventory then return end
-	local vehicle_stack = select_vehicle(inventory, character.player.index)
+	local player_storage = storage.players[character.player.index]
+
+	local rails = get_close_rail(character)
+	local on_rails = table_size(rails) > 0 and player_storage.handle_trains -- Ignore rails if player doesn't want to handle trains
+
+	local vehicle_stack = select_vehicle(inventory, character.player.index, on_rails)
 	if not vehicle_stack then return end
 	
 	if character.driving then pickup_vehicle(character) end --For quick swap
@@ -217,7 +258,6 @@ local function place_vehicle(character)
 		no_space(character)
 		return
 	end
-	character.teleport(-20, -20)
 
 	local vehicle = character.surface.create_entity{
 		name = prototype.place_result.name,
@@ -231,6 +271,7 @@ local function place_vehicle(character)
 		raise_built = true,
 	}
 	if not vehicle then
+		character.teleport(-20, -20)
 		character.player.create_local_flying_text{
 			position = character.position,
 			text = "vehicle creation failed"
@@ -304,6 +345,10 @@ end
 			end
 		end
 	end
+	
+	if vehicle.type == "locomotive" and player_storage.opens_train_menu then
+		character.player.opened = vehicle
+	end
 end
 
 script.on_event("quick-ride", function(event)
@@ -331,13 +376,18 @@ end)
 function validate()
 	storage.players = storage.players or {}
 	storage.vehicles = {}
+	storage.locomotives = {}
 	storage.ammo_categories =  {}
 	local ammo_categories = storage.ammo_categories
 	storage.fuel_categories = {}
 	local fuel_categories = storage.fuel_categories
 
-	for id, vehicle in pairs(prototypes.get_entity_filtered(vehicle_filters)) do
-		storage.vehicles[id] = vehicle
+	for id, vehicle in pairs(prototypes.get_entity_filtered(locomotive_included_filters)) do
+		if vehicle.type == "locomotive" then
+			storage.locomotives[id] = vehicle
+		else
+			storage.vehicles[id] = vehicle
+		end
 
 		--ammo categories
 		if vehicle.guns then
@@ -383,8 +433,11 @@ function validate()
 	
 	for player_index, player in pairs(game.players) do
 		storage.players[player_index] = storage.players[player_index] or {}
-		storage.players[player_index].entered_tick = storage.players[player_index].entered_tick or 0
-		storage.players[player_index].double_tap_delay = player.mod_settings["qr-double-tap-delay"].value * 60
+		local player_storage = storage.players[player_index]
+		player_storage.entered_tick = player_storage.entered_tick or 0
+		player_storage.double_tap_delay = player.mod_settings["qr-double-tap-delay"].value * 60
+		player_storage.handle_trains = player_storage.handle_trains or true
+		player_storage.opens_train_menu = player_storage.opens_train_menu or false
 	end
 
 	gui.init()
@@ -415,27 +468,11 @@ script.on_event(defines.events.on_runtime_mod_setting_changed, function (event)
 end)
 
 script.on_event(defines.events.on_gui_click, function (event)
-	local element = event.element
-	if element.name == "qr-close" then
-		gui.toggle_menu(event.player_index)
-	elseif element.tags.action == "qr-selection" then
-		local list = storage.players[event.player_index].favorites[element.tags.list]
-		local old_value = list[element.tags.choice]
-		---@type any
-		local new_value = 1
-		if event.button == defines.mouse_button_type.right then new_value = false end
-		if new_value == old_value then new_value = nil end
+	gui.on_gui_click(event)
+end)
 
-		list[element.tags.choice] = new_value
-		gui.update_button_style(event.element, new_value)
-	elseif element.name == "qr-swap-view" then
-		storage.players[event.player_index].row_view = not storage.players[event.player_index].row_view
-		gui.make_gui_content(event.player_index)
-		local sprite_names = gui.get_view_button_names(storage.players[event.player_index].row_view)
-		event.element.sprite = sprite_names.normal
-		event.element.hovered_sprite = sprite_names.dark
-		event.element.clicked_sprite = sprite_names.normal
-	end
+script.on_event(defines.events.on_gui_checked_state_changed, function(event)
+	gui.on_gui_checked_state_changed(event)
 end)
 
 script.on_event(defines.events.on_gui_closed, function (event)

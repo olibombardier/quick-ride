@@ -4,6 +4,12 @@ local gui = {}
 
 gui.column_count = 10
 
+local vehicle_types = {
+	car = true,
+	["spider-vehicle"] = true,
+	locomotive = true
+}
+
 function gui.init()
 	-- Make storage variables
 	-- Create gui for players
@@ -30,7 +36,6 @@ function gui.validate_player(player)
 		player_storage.gui.main_frame.destroy()
 		gui.make_gui(player)
 	end
-
 end
 
 function gui.toggle_menu(player_index)
@@ -55,12 +60,17 @@ local function make_section(parent, item_list, list_name, player_storage, item_t
 		local value = player_storage.favorites[list_name][id]
 		local blacklisted = value == false
 
+		local sprite = item_type .. "." .. id
+		if vehicle_types[prototype.type] and prototype.items_to_place_this and table_size(prototype.items_to_place_this) == 1 then
+			sprite = "item." .. prototype.items_to_place_this[1].name
+		end
+
 		---@type LuaGuiElement.add_param
 		local params = {
 			type = "sprite-button",
 			name = "qr-selection-" .. id,
 			tooltip = prototype.localised_name,
-			sprite = item_type .. "." .. id,
+			sprite = sprite,
 			toggled = value == 1,
 			tags = {
 				action = "qr-selection",
@@ -190,7 +200,7 @@ function gui.make_gui_content(player_index)
 	}
 	info_frame.add{
 		type = "label",
-		caption = "Tip: Double tapping the Quick ride shortcut will swap to the next vehicle."
+		caption = "[img=info] Double tapping the Quick ride shortcut will swap to the next vehicle."
 	}
 	
 	---@type LuaGuiElement
@@ -210,7 +220,23 @@ function gui.make_gui_content(player_index)
 	make_subheader(content_frame, "Vehicle")
 	local vehicle_frame = make_section_frame(content_frame)
 	make_section(vehicle_frame, storage.vehicles, "vehicles", player_storage, "entity")
+	make_section(vehicle_frame, storage.locomotives, "vehicles", player_storage, "entity")
 
+	-- Trains setting
+	content_frame.add{
+		type = "checkbox",
+		name = "qr-handle-train",
+		style = "qr_checkbox",
+		caption = "Use locomotive if standing on rail.",
+		state = player_storage.handle_trains,
+	}
+	content_frame.add{
+		type = "checkbox",
+		name = "qr-auto-train-ui",
+		style = "qr_checkbox",
+		caption = "Automatically open train ui when quick-riding a locomotive",
+		state = player_storage.opens_train_menu,
+	}
 
 	if player_storage.row_view then
 		content_frame = row.add{
@@ -322,5 +348,43 @@ function gui.make_gui(player)
 	gui.make_gui_content(player.index)
 end
 
+
+---@param event EventData.on_gui_click
+function gui.on_gui_click(event)
+	local element = event.element
+	if element.name == "qr-close" then
+		gui.toggle_menu(event.player_index)
+
+	elseif element.tags.action == "qr-selection" then
+		local list = storage.players[event.player_index].favorites[element.tags.list]
+		local old_value = list[element.tags.choice]
+		---@type any
+		local new_value = 1
+		if event.button == defines.mouse_button_type.right then new_value = false end
+		if new_value == old_value then new_value = nil end
+
+		list[element.tags.choice] = new_value
+		gui.update_button_style(event.element, new_value)
+
+	elseif element.name == "qr-swap-view" then
+		storage.players[event.player_index].row_view = not storage.players[event.player_index].row_view
+		gui.make_gui_content(event.player_index)
+		local sprite_names = gui.get_view_button_names(storage.players[event.player_index].row_view)
+		event.element.sprite = sprite_names.normal
+		event.element.hovered_sprite = sprite_names.dark
+		event.element.clicked_sprite = sprite_names.normal
+	end
+end
+
+---@param event EventData.on_gui_checked_state_changed
+function gui.on_gui_checked_state_changed(event)
+	local element = event.element
+	local player_storage = storage.players[event.player_index]
+	if element.name == "qr-handle-train" then
+		player_storage.handle_trains = event.element.state
+	elseif element.name == "qr-auto-train-ui" then
+		player_storage.opens_train_menu = event.element.state
+	end
+end
 
 return gui
