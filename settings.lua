@@ -7,4 +7,10 @@ data:extend({
 		maximum_value = 1.0,
 		default_value = 0.25
 	},
+	{
+		type = "bool-setting",
+		name = "qr-show-used-fuel",
+		setting_type = "runtime-per-user",
+		default_value = true
+	},
 })

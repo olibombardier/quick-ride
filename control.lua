@@ -1,4 +1,5 @@
 require("util")
+local math2d = require("math2d")
 
 local gui = require("gui")
 local damage_lib = require("damage")
@@ -33,13 +34,20 @@ local vehicle_inventories = {
 	defines.inventory.fuel,
 }
 
----@param character LuaEntity
-local function no_room(character)
-	--TODO Play error sound
-	character.player.create_local_flying_text{
-		text = "No room in inventory",
-		position = character.position
-	}
+--Adapted from the quality mod
+function get_item_localised_name(name)
+  local item = prototypes.item[name]
+  if not item then return end
+  if item.localised_name then
+    return item.localised_name
+  end
+  local prototype
+  local type_name = "item"
+  if item.place_result then
+    prototype = prototypes.entity[item.place_result.name]
+    type_name = "entity"
+  end
+  return prototype and prototype.localised_name or {type_name.."-name."..name}
 end
 
 ---@param character LuaEntity
@@ -47,7 +55,7 @@ local function no_space(character, vehicle_name)
 	vehicle_name = vehicle_name or "vehicle"
 	--TODO Play error sound
 	character.player.create_local_flying_text{
-		text = "No space for " .. vehicle_name,
+		text = {"ui.qr-no-space", get_item_localised_name(vehicle_name)},
 		position = character.position
 	}
 end
@@ -255,7 +263,7 @@ local function place_vehicle(character)
 		build_check_type = defines.build_check_type.manual
 	}) then
 		character.teleport(-20, -20)
-		no_space(character)
+		no_space(character, prototype.name)
 		return
 	end
 
@@ -279,7 +287,6 @@ local function place_vehicle(character)
 		return
 end
 	--Copy equipment
-
 	if vehicle_stack.item and vehicle_stack.item.grid and vehicle.grid then
 		copy_grid(vehicle_stack.item.grid, vehicle.grid)
 	end
@@ -295,7 +302,7 @@ end
 
 	if math.random() < 0.005 then
 		character.player.create_local_flying_text{
-			position = character.position,
+			position = math2d.position.add(vehicle.position, {0, -0.6}),
 			text = "CATCH A RIIIIIIIIIIIIDE!",
 			time_to_live = 120
 		}
@@ -304,17 +311,30 @@ end
 	local burner = vehicle.burner
 	if burner then
 		local fuel_inventory = burner.inventory
+		---@type <ItemID, count>
+		local fuel_used = {}
 		if fuel_inventory then
-
 			for i=1, #fuel_inventory do
 				local fuel_stack = select_fuel(inventory, storage.players[player_index].favorites.fuel, burner.fuel_categories)
 				if fuel_stack then
 					local inserted = fuel_inventory.insert(fuel_stack)
+					fuel_used[fuel_stack.name] = (fuel_used[fuel_stack.name] or 0) + inserted
 					inventory.remove{
 						name= fuel_stack.name,
 						quality = fuel_stack.quality,
 						count = inserted
 					}
+				end
+			end
+
+			if character.player.mod_settings["qr-show-used-fuel"].value then
+				local i = 0
+				for item, count in pairs(fuel_used) do
+					character.player.create_local_flying_text{
+						position = math2d.position.add(vehicle.position, {0, i * 0.6}),
+						text = count .. " × [item=".. item .."] used as fuel",
+					}
+					i = i + 1
 				end
 			end
 		end

@@ -1,11 +1,12 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.0
-Date: ????
+Date: 2025-03-23
   Features:
-    - Added an option to attempt to pick a locomotive if the player is standing on rails
+    - Added an option to use locomotives if the player is standing on rails
     - Added an option to automatically open the train UI when quick-riding a locomotive
   Changes:
     - The quick ride menu will show the item icon for vehicles
+    - Used fuels item are shown when quick-riding (can be disabled in settings)
 ---------------------------------------------------------------------------------------------------
 Version: 1.1.4
 Date: 2025-03-17
