@@ -1,7 +1,14 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.1
-Date: ????
+Date: 2025-04-10
+  Features:
+    - Added an option to stay in the vehicle when quick-rinding out without enough inventoty space (true by default)
+  Bugfixes:
+    - Equipment burner inventories in the vehicle equipment-grid will not disapear anymore when picking up a vehicle with quick-ride
   Changes:
+    - Fixed the hints in the Quick ride menu
+    - Readded the "inventory full" message
+    - Moved options with the normal mod settings (You'll need to set them again)
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.0
 Date: 2025-03-23

@@ -192,11 +192,11 @@ function gui.make_gui_content(player_index)
 	
 	info_frame.add{
 		type = "label",
-		caption = "Right-click to set as a favorite item."
+		caption = "Left-click to set as a favorite item."
 	}
 	info_frame.add{
 		type = "label",
-		caption = "Left-click to blacklist an item."
+		caption = "Right-click to blacklist an item."
 	}
 	info_frame.add{
 		type = "label",
@@ -221,22 +221,6 @@ function gui.make_gui_content(player_index)
 	local vehicle_frame = make_section_frame(content_frame)
 	make_section(vehicle_frame, storage.vehicles, "vehicles", player_storage, "entity")
 	make_section(vehicle_frame, storage.locomotives, "vehicles", player_storage, "entity")
-
-	-- Trains setting
-	content_frame.add{
-		type = "checkbox",
-		name = "qr-handle-train",
-		style = "qr_checkbox",
-		caption = "Use locomotive if standing on rail.",
-		state = player_storage.handle_trains,
-	}
-	content_frame.add{
-		type = "checkbox",
-		name = "qr-auto-train-ui",
-		style = "qr_checkbox",
-		caption = "Automatically open train ui when quick-riding a locomotive",
-		state = player_storage.opens_train_menu,
-	}
 
 	if player_storage.row_view then
 		content_frame = row.add{
@@ -378,13 +362,13 @@ end
 
 ---@param event EventData.on_gui_checked_state_changed
 function gui.on_gui_checked_state_changed(event)
-	local element = event.element
-	local player_storage = storage.players[event.player_index]
-	if element.name == "qr-handle-train" then
-		player_storage.handle_trains = event.element.state
-	elseif element.name == "qr-auto-train-ui" then
-		player_storage.opens_train_menu = event.element.state
-	end
+	--local element = event.element
+	--local player_storage = storage.players[event.player_index]
+	--if element.name == "qr-handle-train" then
+	--	player_storage.handle_trains = event.element.state
+	--elseif element.name == "qr-auto-train-ui" then
+	--	player_storage.opens_train_menu = event.element.state
+	--end
 end
 
 return gui

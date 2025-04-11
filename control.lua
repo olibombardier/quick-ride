@@ -87,6 +87,25 @@ local function copy_grid(source, target)
 				if new_equip.max_shield > 0 then
 					new_equip.shield = equipment.shield
 				end
+				if new_equip.burner then
+					new_equip.burner.currently_burning = equipment.burner.currently_burning
+					new_equip.burner.heat = equipment.burner.heat
+					new_equip.burner.remaining_burning_fuel = equipment.burner.remaining_burning_fuel
+					for _, fuel in pairs(equipment.burner.inventory.get_contents()) do
+						new_equip.burner.inventory.insert({
+							name = fuel.name,
+							count = fuel.count,
+							quality = fuel.quality
+						})
+					end
+					for _, burnt_fuel in pairs(equipment.burner.burnt_result_inventory.get_contents()) do
+						new_equip.burner.burnt_result_inventory.insert({
+							name = burnt_fuel.name,
+							count = burnt_fuel.count,
+							quality = burnt_fuel.quality
+						})
+					end
+				end
 			end
 		else
 			target.put{
@@ -110,7 +129,21 @@ local function pickup_vehicle(character)
 	local position = vehicle.position
 	vehicle.set_driver(nil)
 	local succeded = vehicle.mine{inventory = character_inventory, raise_destroyed = true}
-	if succeded then character.teleport(position) end
+	if succeded 
+		then character.teleport(position)
+	else
+		local action = character.player.mod_settings["qr-inventory-full-action"].value
+		local text_position = character.position
+		if action == "stay-in" then
+			text_position = vehicle.position
+			vehicle.set_driver(character)
+		end
+		character.player.create_local_flying_text{
+			position = text_position,
+			color = {1, 0, 0},
+			text = "Inventory full"
+		}
+	end
 end
 
 ---@param inventory LuaInventory
@@ -244,7 +277,7 @@ local function place_vehicle(character)
 	local player_storage = storage.players[character.player.index]
 
 	local rails = get_close_rail(character)
-	local on_rails = table_size(rails) > 0 and player_storage.handle_trains -- Ignore rails if player doesn't want to handle trains
+	local on_rails = table_size(rails) > 0 and character.player.mod_settings["qr-handle-trains"].value -- Ignore rails if player doesn't want to handle trains
 
 	local vehicle_stack = select_vehicle(inventory, character.player.index, on_rails)
 	if not vehicle_stack then return end
@@ -282,6 +315,7 @@ local function place_vehicle(character)
 		character.teleport(-20, -20)
 		character.player.create_local_flying_text{
 			position = character.position,
+			color = {1, 0, 0},
 			text = "vehicle creation failed"
 		}
 		return
@@ -366,7 +400,7 @@ end
 		end
 	end
 	
-	if vehicle.type == "locomotive" and player_storage.opens_train_menu then
+	if vehicle.type == "locomotive" and character.player.mod_settings["qr-opens-train-menu"].value then
 		character.player.opened = vehicle
 	end
 end
@@ -390,6 +424,17 @@ end)
 script.on_event(defines.events.on_lua_shortcut, function (event)
 	if(event.prototype_name == "quick-ride-toggle") then
 		gui.toggle_menu(event.player_index)
+	end
+end)
+
+script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
+	if event.mod_name ~= "quick-ride" then return end
+	local player_storage = storage.players[event.player_index]
+	local player = game.get_player(event.player_index)
+	if not player then return end
+
+	if event.setting == "qr-double-tap-delay" then
+		player_storage.double_tap_delay = player.mod_settings["qr-double-tap-delay"].value * 60
 	end
 end)
 
@@ -456,8 +501,6 @@ function validate()
 		local player_storage = storage.players[player_index]
 		player_storage.entered_tick = player_storage.entered_tick or 0
 		player_storage.double_tap_delay = player.mod_settings["qr-double-tap-delay"].value * 60
-		player_storage.handle_trains = player_storage.handle_trains or true
-		player_storage.opens_train_menu = player_storage.opens_train_menu or false
 	end
 
 	gui.init()
@@ -467,7 +510,7 @@ script.on_event(defines.events.on_player_joined_game, function (event)
 	local player = game.get_player(event.player_index)
 	storage.players[event.player_index] = {
 		entered_tick = 0,
-		double_tap_delay = player and player.mod_settings["qr-double-tap-delay"].value * 60
+		double_tap_delay = player and player.mod_settings["qr-double-tap-delay"].value * 60,
 	}
 	gui.validate_player(event.player_index)
 end)
