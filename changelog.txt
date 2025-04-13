@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.2.2
+Date: 2025-04-13
+  Changes:
+    - Quick-riding out of a locomotive wont place you back on rails anymore
+    - Added checks to ensure vehicle equipment grid are properlly copied
+---------------------------------------------------------------------------------------------------
 Version: 1.2.1
 Date: 2025-04-10
   Features:

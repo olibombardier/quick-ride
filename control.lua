@@ -82,6 +82,14 @@ local function copy_grid(source, target)
 				quality = equipment.quality,
 				position = equipment.position,
 			}
+
+			if new_equip == nil then
+				local existing_equipment = target.get(equipment.position)
+				if existing_equipment and existing_equipment.type == equipment.position then
+					new_equip = existing_equipment
+				end
+			end
+
 			if new_equip ~= nil then
 				new_equip.energy = equipment.energy
 				if new_equip.max_shield > 0 then
@@ -127,10 +135,11 @@ local function pickup_vehicle(character)
 	if not vehicle then return end
 	
 	local position = vehicle.position
+	local vehicle_type = vehicle.type
 	vehicle.set_driver(nil)
 	local succeded = vehicle.mine{inventory = character_inventory, raise_destroyed = true}
-	if succeded 
-		then character.teleport(position)
+	if succeded then
+		if vehicle_type ~= "locomotive" then character.teleport(position) end
 	else
 		local action = character.player.mod_settings["qr-inventory-full-action"].value
 		local text_position = character.position
