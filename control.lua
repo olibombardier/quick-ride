@@ -5,10 +5,10 @@ local gui = require("gui")
 local damage_lib = require("damage")
 
 ---@type EntityPrototypeFilter[]
-local vehicle_filters = {{filter="type", type="car"}, {mode="or", filter="type", type="spider-vehicle"}}
+local vehicle_filters = { { filter = "type", type = "car" }, { mode = "or", filter = "type", type = "spider-vehicle" } }
 ---@type EntityPrototypeFilter[]
 local locomotive_included_filters = table.deepcopy(vehicle_filters)
-table.insert(locomotive_included_filters, {mode="or", filter="type", type="locomotive"})
+table.insert(locomotive_included_filters, { mode = "or", filter = "type", type = "locomotive" })
 
 local rail_detect_range = 3.5
 
@@ -36,26 +36,26 @@ local vehicle_inventories = {
 
 --Adapted from the quality mod
 function get_item_localised_name(name)
-  local item = prototypes.item[name]
-  if not item then return end
-  if item.localised_name then
-    return item.localised_name
-  end
-  local prototype
-  local type_name = "item"
-  if item.place_result then
-    prototype = prototypes.entity[item.place_result.name]
-    type_name = "entity"
-  end
-  return prototype and prototype.localised_name or {type_name.."-name."..name}
+	local item = prototypes.item[name]
+	if not item then return end
+	if item.localised_name then
+		return item.localised_name
+	end
+	local prototype
+	local type_name = "item"
+	if item.place_result then
+		prototype = prototypes.entity[item.place_result.name]
+		type_name = "entity"
+	end
+	return prototype and prototype.localised_name or { type_name .. "-name." .. name }
 end
 
 ---@param character LuaEntity
 local function no_space(character, vehicle_name)
 	vehicle_name = vehicle_name or "vehicle"
 	--TODO Play error sound
-	character.player.create_local_flying_text{
-		text = {"ui.qr-no-space", get_item_localised_name(vehicle_name)},
+	character.player.create_local_flying_text {
+		text = { "ui.qr-no-space", get_item_localised_name(vehicle_name) },
 		position = character.position
 	}
 end
@@ -64,7 +64,7 @@ end
 ---@param character LuaEntity
 ---@return LuaEntity[]
 local function get_close_rail(character)
-	return character.surface.find_entities_filtered{
+	return character.surface.find_entities_filtered {
 		position = character.position,
 		radius = rail_detect_range,
 		type = rail_types
@@ -77,7 +77,7 @@ end
 local function copy_grid(source, target)
 	for _, equipment in pairs(source.equipment) do
 		if equipment.name ~= "equipment-ghost" then
-			local new_equip = target.put{
+			local new_equip = target.put {
 				name = equipment.name,
 				quality = equipment.quality,
 				position = equipment.position,
@@ -116,10 +116,10 @@ local function copy_grid(source, target)
 				end
 			end
 		else
-			target.put{
+			target.put {
 				name = equipment.ghost_name,
 				quality = equipment.quality,
-				position = {x, y},
+				position = { x, y },
 				ghost = true,
 			}
 		end
@@ -133,11 +133,11 @@ local function pickup_vehicle(character)
 	if not character_inventory then return end
 	local vehicle = character.vehicle
 	if not vehicle then return end
-	
+
 	local position = vehicle.position
 	local vehicle_type = vehicle.type
 	vehicle.set_driver(nil)
-	local succeded = vehicle.mine{inventory = character_inventory, raise_destroyed = true}
+	local succeded = vehicle.mine { inventory = character_inventory, raise_destroyed = true }
 	if succeded then
 		if vehicle_type ~= "locomotive" then character.teleport(position) end
 	else
@@ -147,9 +147,9 @@ local function pickup_vehicle(character)
 			text_position = vehicle.position
 			vehicle.set_driver(character)
 		end
-		character.player.create_local_flying_text{
+		character.player.create_local_flying_text {
 			position = text_position,
-			color = {1, 0, 0},
+			color = { 1, 0, 0 },
 			text = "Inventory full"
 		}
 	end
@@ -286,11 +286,13 @@ local function place_vehicle(character)
 	local player_storage = storage.players[character.player.index]
 
 	local rails = get_close_rail(character)
-	local on_rails = table_size(rails) > 0 and character.player.mod_settings["qr-handle-trains"].value -- Ignore rails if player doesn't want to handle trains
+
+	-- Ignore rails if player doesn't want to handle trains
+	local on_rails = table_size(rails) > 0 and character.player.mod_settings["qr-handle-trains"].value --[[@as boolean]]
 
 	local vehicle_stack = select_vehicle(inventory, character.player.index, on_rails)
 	if not vehicle_stack then return end
-	
+
 	if character.driving then pickup_vehicle(character) end --For quick swap
 
 	local prototype = vehicle_stack.item.prototype
@@ -298,18 +300,18 @@ local function place_vehicle(character)
 
 	character.teleport(20, 20)
 	if not character.surface.can_place_entity({
-		name = prototype.place_result.name,
-		position = position,
-		direction = character.direction,
-		force = character.force,
-		build_check_type = defines.build_check_type.manual
-	}) then
+				name = prototype.place_result.name,
+				position = position,
+				direction = character.direction,
+				force = character.force,
+				build_check_type = defines.build_check_type.manual
+			}) then
 		character.teleport(-20, -20)
 		no_space(character, prototype.name)
 		return
 	end
 
-	local vehicle = character.surface.create_entity{
+	local vehicle = character.surface.create_entity {
 		name = prototype.place_result.name,
 		quality = vehicle_stack.quality,
 		position = position,
@@ -322,13 +324,13 @@ local function place_vehicle(character)
 	}
 	if not vehicle then
 		character.teleport(-20, -20)
-		character.player.create_local_flying_text{
+		character.player.create_local_flying_text {
 			position = character.position,
-			color = {1, 0, 0},
+			color = { 1, 0, 0 },
 			text = "vehicle creation failed"
 		}
 		return
-end
+	end
 	--Copy equipment
 	if vehicle_stack.item and vehicle_stack.item.grid and vehicle.grid then
 		copy_grid(vehicle_stack.item.grid, vehicle.grid)
@@ -341,11 +343,11 @@ end
 		count = 1
 	})
 	vehicle.set_driver(character)
-	storage.players[player_index].entered_tick = game.tick
+	player_storage.entered_tick = game.tick
 
 	if math.random() < 0.005 then
-		character.player.create_local_flying_text{
-			position = math2d.position.add(vehicle.position, {0, -0.6}),
+		character.player.create_local_flying_text {
+			position = math2d.position.add(vehicle.position, { 0, -0.6 }),
 			text = "CATCH A RIIIIIIIIIIIIDE!",
 			time_to_live = 120
 		}
@@ -357,13 +359,13 @@ end
 		---@type <ItemID, count>
 		local fuel_used = {}
 		if fuel_inventory then
-			for i=1, #fuel_inventory do
-				local fuel_stack = select_fuel(inventory, storage.players[player_index].favorites.fuel, burner.fuel_categories)
+			for i = 1, #fuel_inventory do
+				local fuel_stack = select_fuel(inventory, player_storage.favorites.fuel, burner.fuel_categories)
 				if fuel_stack then
 					local inserted = fuel_inventory.insert(fuel_stack)
 					fuel_used[fuel_stack.name] = (fuel_used[fuel_stack.name] or 0) + inserted
-					inventory.remove{
-						name= fuel_stack.name,
+					inventory.remove {
+						name = fuel_stack.name,
 						quality = fuel_stack.quality,
 						count = inserted
 					}
@@ -373,9 +375,9 @@ end
 			if character.player.mod_settings["qr-show-used-fuel"].value then
 				local i = 0
 				for item, count in pairs(fuel_used) do
-					character.player.create_local_flying_text{
-						position = math2d.position.add(vehicle.position, {0, i * 0.6}),
-						text = count .. " × [item=".. item .."] used as fuel",
+					character.player.create_local_flying_text {
+						position = math2d.position.add(vehicle.position, { 0, i * 0.6 }),
+						text = count .. " × [item=" .. item .. "] used as fuel",
 					}
 					i = i + 1
 				end
@@ -396,11 +398,11 @@ end
 					end
 				end
 
-				local ammo_stack = select_ammo(inventory, storage.players[player_index].favorites.ammo, categories)
+				local ammo_stack = select_ammo(inventory, player_storage.favorites.ammo, categories)
 				if ammo_stack then
 					local inserted = ammo_inventory.insert(ammo_stack)
-					inventory.remove{
-						name= ammo_stack.name,
+					inventory.remove {
+						name = ammo_stack.name,
 						quality = ammo_stack.quality,
 						count = inserted
 					}
@@ -408,9 +410,25 @@ end
 			end
 		end
 	end
-	
-	if vehicle.type == "locomotive" and character.player.mod_settings["qr-opens-train-menu"].value then
-		character.player.opened = vehicle
+
+	if vehicle.type == "locomotive" then
+		if character.player.mod_settings["qr-correct-train-direction"].value then
+			local train = vehicle.train
+			if not train then
+				error("Oups! Pas de train")
+			end
+			local end_rail = train.front_end
+			local direction = end_rail.direction
+			if end_rail.rail.get_rail_segment_signal(direction, true) then
+				if not end_rail.rail.get_rail_segment_signal(direction, false) then
+					local opposed_direction = util.oppositedirection(vehicle.direction)
+					vehicle.direction = opposed_direction
+				end
+			end
+		end
+		if character.player.mod_settings["qr-opens-train-menu"].value then
+			character.player.opened = vehicle
+		end
 	end
 end
 
@@ -418,7 +436,7 @@ script.on_event("quick-ride", function(event)
 	local player = game.players[event.player_index]
 	if not player.character then return end
 	local player_storage = storage.players[event.player_index]
-	
+
 	if not player.character.driving or event.tick - player_storage.entered_tick < player_storage.double_tap_delay then
 		place_vehicle(player.character)
 	else
@@ -430,8 +448,8 @@ script.on_event("quick-ride-toggle", function(event)
 	gui.toggle_menu(event.player_index)
 end)
 
-script.on_event(defines.events.on_lua_shortcut, function (event)
-	if(event.prototype_name == "quick-ride-toggle") then
+script.on_event(defines.events.on_lua_shortcut, function(event)
+	if (event.prototype_name == "quick-ride-toggle") then
 		gui.toggle_menu(event.player_index)
 	end
 end)
@@ -451,7 +469,7 @@ function validate()
 	storage.players = storage.players or {}
 	storage.vehicles = {}
 	storage.locomotives = {}
-	storage.ammo_categories =  {}
+	storage.ammo_categories = {}
 	local ammo_categories = storage.ammo_categories
 	storage.fuel_categories = {}
 	local fuel_categories = storage.fuel_categories
@@ -467,7 +485,6 @@ function validate()
 		if vehicle.guns then
 			for _, gun in pairs(vehicle.guns) do
 				if gun.attack_parameters and gun.attack_parameters.ammo_categories then
-
 					for _, category in pairs(gun.attack_parameters.ammo_categories) do
 						ammo_categories[category] = ammo_categories[category] or {
 							vehicles = {}
@@ -491,7 +508,7 @@ function validate()
 
 	for id, category in pairs(fuel_categories) do
 		category.items = {}
-		for item_id, item in pairs(prototypes.get_item_filtered{{filter="fuel-category", ["fuel-category"] = id}}) do
+		for item_id, item in pairs(prototypes.get_item_filtered { { filter = "fuel-category", ["fuel-category"] = id } }) do
 			category.items[item_id] = item
 		end
 	end
@@ -499,12 +516,12 @@ function validate()
 	for _, category in pairs(ammo_categories) do
 		category.items = {}
 	end
-	for id, item in pairs(prototypes.get_item_filtered{{filter="type", type = "ammo"}}) do
+	for id, item in pairs(prototypes.get_item_filtered { { filter = "type", type = "ammo" } }) do
 		if item.ammo_category and ammo_categories[item.ammo_category.name] then
 			ammo_categories[item.ammo_category.name].items[id] = item
 		end
 	end
-	
+
 	for player_index, player in pairs(game.players) do
 		storage.players[player_index] = storage.players[player_index] or {}
 		local player_storage = storage.players[player_index]
@@ -515,7 +532,7 @@ function validate()
 	gui.init()
 end
 
-script.on_event(defines.events.on_player_joined_game, function (event)
+script.on_event(defines.events.on_player_joined_game, function(event)
 	local player = game.get_player(event.player_index)
 	storage.players[event.player_index] = {
 		entered_tick = 0,
@@ -524,22 +541,22 @@ script.on_event(defines.events.on_player_joined_game, function (event)
 	gui.validate_player(event.player_index)
 end)
 
-script.on_init(function ()
+script.on_init(function()
 	validate()
 end)
 
-script.on_configuration_changed(function ()
+script.on_configuration_changed(function()
 	validate()
 end)
 
-script.on_event(defines.events.on_runtime_mod_setting_changed, function (event)
+script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
 	local player = game.get_player(event.player_index)
 	if not player then return end
 	local player_storage = storage.players[event.player_index]
 	player_storage.double_tap_delay = player.mod_settings["qr-double-tap-delay"].value * 60
 end)
 
-script.on_event(defines.events.on_gui_click, function (event)
+script.on_event(defines.events.on_gui_click, function(event)
 	gui.on_gui_click(event)
 end)
 
@@ -547,7 +564,7 @@ script.on_event(defines.events.on_gui_checked_state_changed, function(event)
 	gui.on_gui_checked_state_changed(event)
 end)
 
-script.on_event(defines.events.on_gui_closed, function (event)
+script.on_event(defines.events.on_gui_closed, function(event)
 	if event.element and event.element.name == "quick-ride-main" then
 		local player_storage = storage.players[event.player_index]
 		if player_storage and player_storage.gui then

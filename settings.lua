@@ -22,10 +22,17 @@ data:extend({
 	},
 	{
 		type = "bool-setting",
+		name = "qr-correct-train-direction",
+		setting_type = "runtime-per-user",
+		default_value = true,
+		order = "train-b"
+	},
+	{
+		type = "bool-setting",
 		name = "qr-opens-train-menu",
 		setting_type = "runtime-per-user",
 		default_value = false,
-		order = "train-b",
+		order = "train-c",
 	},
 	{
 		type = "string-setting",
