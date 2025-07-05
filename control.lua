@@ -455,7 +455,8 @@ script.on_event(defines.events.on_lua_shortcut, function(event)
 end)
 
 script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
-	if event.mod_name ~= "quick-ride" then return end
+	if event.setting ~= "qr-double-tap-delay" then return end
+
 	local player_storage = storage.players[event.player_index]
 	local player = game.get_player(event.player_index)
 	if not player then return end
@@ -547,13 +548,6 @@ end)
 
 script.on_configuration_changed(function()
 	validate()
-end)
-
-script.on_event(defines.events.on_runtime_mod_setting_changed, function(event)
-	local player = game.get_player(event.player_index)
-	if not player then return end
-	local player_storage = storage.players[event.player_index]
-	player_storage.double_tap_delay = player.mod_settings["qr-double-tap-delay"].value * 60
 end)
 
 script.on_event(defines.events.on_gui_click, function(event)

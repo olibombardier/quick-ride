@@ -1,8 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.3
-Date: ????
-  Features:
-    - Trains will try to be placed in the correct direction according to rail signals
+Date: 2025-07-05
+  Bugfixes:
+    - Fixed any issue that could cause crashes when per player mod settings were changed
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.2
 Date: 2025-04-13
