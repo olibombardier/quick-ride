@@ -43,5 +43,11 @@ data:extend({
 			"stay-in",
 			"get-out",
 		},
+	},
+	{
+		type = "bool-setting",
+		name = "qr-ignore-unhandled-on-exit",
+		setting_type = "runtime-per-user",
+		default_value = true
 	}
 })

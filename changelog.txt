@@ -1,18 +1,19 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.4
 Date: 2025-11-01
+  Features:
+    - Added an option to make the quick-ride shortcut not exit vehicles that would not have been picked up from the inventory (default to true) 
   Changes:
+    - Increased minimum factorio version to 2.0.59
     - Let the engine handle vehicles' equipment grids
-  TODO:
-    - Fix shortcut getting out of train when trains are disabled (option)
-    - Fix 'Lua entity invalid' at quick-ride /control.lua:443: Inside function <_quick-ride /control.lua:435> 
+    - Added an additional check to hopefully prevent errors where exiting a vehicle with the quick-ride shortcut 
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.3
 Date: 2025-07-05
   Bugfixes:
     - Fixed any issue that could cause crashes when per player mod settings were changed
   Features:
-    - Trains will try to be placed in the correct direction according to rail signals
+    - Trains will try to be placed in the correct direction according to rail signals (might not always work)
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.2
 Date: 2025-04-13

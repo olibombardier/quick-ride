@@ -77,11 +77,22 @@ local function pickup_vehicle(character)
 	local character_inventory = character.get_inventory(defines.inventory.character_main)
 	if not character_inventory then return end
 	local vehicle = character.vehicle
-	if not vehicle then return end
+	if not vehicle or not vehicle.valid then return end
 
 	local position = vehicle.position
 	local vehicle_type = vehicle.type
+	if character.player.mod_settings["qr-ignore-unhandled-on-exit"].value --[[@as boolean]] then
+		if not character.player.mod_settings["qr-handle-trains"].value --[[@as boolean]] and vehicle_type == "locomotive" then
+			return
+		end
+
+		if storage.players[character.player.index].favorites["vehicles"][vehicle.name] == false then
+			return
+		end
+	end
 	vehicle.set_driver(nil)
+	--for some reason, probably due to interactions with other mods, exiting the vehicle can make it invalid
+	if not vehicle.valid then return end
 	local succeded = vehicle.mine { inventory = character_inventory, raise_destroyed = true }
 	if succeded then
 		if vehicle_type ~= "locomotive" then character.teleport(position) end
