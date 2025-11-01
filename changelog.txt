@@ -1,7 +1,11 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.4
-Date: ????
+Date: 2025-11-01
   Changes:
+    - Let the engine handle vehicles' equipment grids
+  TODO:
+    - Fix shortcut getting out of train when trains are disabled (option)
+    - Fix 'Lua entity invalid' at quick-ride /control.lua:443: Inside function <_quick-ride /control.lua:435> 
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.3
 Date: 2025-07-05

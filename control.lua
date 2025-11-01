@@ -71,61 +71,6 @@ local function get_close_rail(character)
 	}
 end
 
----Copy a grid into a other as long as they have the same size
----@param source LuaEquipmentGrid
----@param target LuaEquipmentGrid
-local function copy_grid(source, target)
-	for _, equipment in pairs(source.equipment) do
-		if equipment.name ~= "equipment-ghost" then
-			local new_equip = target.put {
-				name = equipment.name,
-				quality = equipment.quality,
-				position = equipment.position,
-			}
-
-			if new_equip == nil then
-				local existing_equipment = target.get(equipment.position)
-				if existing_equipment and existing_equipment.type == equipment.position then
-					new_equip = existing_equipment
-				end
-			end
-
-			if new_equip ~= nil then
-				new_equip.energy = equipment.energy
-				if new_equip.max_shield > 0 then
-					new_equip.shield = equipment.shield
-				end
-				if new_equip.burner then
-					new_equip.burner.currently_burning = equipment.burner.currently_burning
-					new_equip.burner.heat = equipment.burner.heat
-					new_equip.burner.remaining_burning_fuel = equipment.burner.remaining_burning_fuel
-					for _, fuel in pairs(equipment.burner.inventory.get_contents()) do
-						new_equip.burner.inventory.insert({
-							name = fuel.name,
-							count = fuel.count,
-							quality = fuel.quality
-						})
-					end
-					for _, burnt_fuel in pairs(equipment.burner.burnt_result_inventory.get_contents()) do
-						new_equip.burner.burnt_result_inventory.insert({
-							name = burnt_fuel.name,
-							count = burnt_fuel.count,
-							quality = burnt_fuel.quality
-						})
-					end
-				end
-			end
-		else
-			target.put {
-				name = equipment.ghost_name,
-				quality = equipment.quality,
-				position = { x, y },
-				ghost = true,
-			}
-		end
-	end
-end
-
 ---@param character LuaEntity
 local function pickup_vehicle(character)
 	--TODO Save vehicle prototype, fuel and ammo
@@ -330,10 +275,6 @@ local function place_vehicle(character)
 			text = "vehicle creation failed"
 		}
 		return
-	end
-	--Copy equipment
-	if vehicle_stack.item and vehicle_stack.item.grid and vehicle.grid then
-		copy_grid(vehicle_stack.item.grid, vehicle.grid)
 	end
 
 	vehicle.health = vehicle_stack.health * vehicle.max_health
