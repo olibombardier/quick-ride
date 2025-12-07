@@ -251,7 +251,7 @@ local function place_vehicle(character)
 
 	if character.driving then pickup_vehicle(character) end --For quick swap
 
-	local prototype = vehicle_stack.item.prototype
+	local prototype = (vehicle_stack.item or vehicle_stack).prototype
 	local position = character.position
 
 	character.teleport(20, 20)

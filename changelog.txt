@@ -1,7 +1,8 @@
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.5
-Date: ????
-  Changes:
+Date: 2025-12-06
+  Bugfixes:
+    - Fixed an error when trying to use Quick Ride with certain vehicles, notably Mini Trains
 ---------------------------------------------------------------------------------------------------
 Version: 1.2.4
 Date: 2025-11-01
